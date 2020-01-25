@@ -4,9 +4,27 @@ from datetime import datetime, date, time, timedelta
 from functools import reduce
 
 
+roomNumber = {
+    '61': 'Webster Library LB-251 (Luxembourg)',
+    '62': 'Webster Library LB-257 (Croatia)',
+    '63': '***NO HDMI CONNECATION*** Webster Library LB-259 (New Zealand)',
+    '53': 'Webster Library LB-351 (Netherlands)',
+    '54': 'Webster Library LB-353 (Kenya)',
+    '55': 'Webster Library LB-359 (Vietnam)',
+    '6': 'Webster Library LB-451 (Brazil)',
+    '5': 'Webster Library LB-453 (Japan)',
+    '4': 'Webster Library LB-459 (Italy)',
+    '58': 'Webster Library LB-518 (Ukraine)',
+    '57': 'Webster Library LB-520 (South Africa) - Consultation Room',
+    '56': 'Webster Library LB-522 (Peru)',
+    '59': 'Webster Library LB-547 (Lithuania)',
+    '60': 'Webster Library LB-583 (Poland)'
+}
+
+
 def isTimeFormat(input):
     try:
-        time.strptime(input, '%H:%M')
+        time.fromisoformat(input)
         return True
     except ValueError:
         return False
@@ -26,42 +44,44 @@ def consecutiveSlots(slot1, slot2):
 # return time slots in the format of (startTime, timedelta)
 
 
+# merge the half-hour reservable chunks, for display purpose only
 def mergeReservables(reservableSlots):
     if (len(reservableSlots) > 1):
         if (consecutiveSlots(reservableSlots[0], reservableSlots[1])):
             newSlot = {'startTime': reservableSlots[0].get('startTime'), 'timeLength': reservableSlots[0].get(
                 'timeLength') + reservableSlots[1].get('timeLength'), 'number': reservableSlots[0].get('number')}
             if (len(reservableSlots) > 2):
-                print('bee')
                 return mergeReservables([newSlot] + reservableSlots[2:])
             else:
                 return [newSlot]
         else:
-            print('boo')
             return [reservableSlots[0]] + mergeReservables(reservableSlots[1:])
     else:
         return reservableSlots
 
+
 def displayMerged(mergedSlots):
     for slot in mergedSlots:
-        print(slot.get('startTime'))
+        sdtObj = slot.get('startTime')  # start datetime object
+        entry = sdtObj.date().isoformat()
+        entry += ' ' + sdtObj.time().isoformat()
+        entry += ' for ' + \
+            str(slot.get('timeLength').total_seconds() / 60) + 'minutes'
+        entry += '\nRoom: ' + roomNumber.get(slot.get('number')) + '\n'
+        print(entry)
 
 
-roomNumber = {
-    '61': 'Webster Library LB-251 (Luxembourg)',
-    '62': 'Webster Library LB-257 (Croatia)',
-    '63': '***NO HDMI CONNECATION*** Webster Library LB-259 (New Zealand)',
-    '53': 'Webster Library LB-351 (Netherlands)',
-    '54': 'Webster Library LB-353 (Kenya)',
-    '55': 'Webster Library LB-359 (Vietnam)',
-    '6': 'Webster Library LB-451 (Brazil)',
-    '5': 'Webster Library LB-453 (Japan)',
-    '4': 'Webster Library LB-459 (Italy)',
-    '58': 'Webster Library LB-518 (Ukraine)',
-    '56': 'Webster Library LB-522 (Peru)',
-    '59': 'Webster Library LB-547 (Lithuania)',
-    '60': 'Webster Library LB-583 (Poland)'
-}
+def validateDate(date_):
+    # valid if later or equal to today
+    if date_ == 'today':
+        date_ = date.today().isoformat()
+
+    now = datetime.now().date()
+    try:
+        thisVal = date.fromisoformat(date_)
+        return now == thisVal or thisVal > now
+    except:
+        return False
 
 
 # Preparation
@@ -70,22 +90,29 @@ def main():
     phpsessid = core.getSessionid(session)
     core.login(session, phpsessid)
 
-    date_ = input('The date you want to track (format: yyyy-MM-dd)\n')
-    stime = input('Start time? (format HH:mm, press any key to skip\n')
-    etime = input('End time? (format HH:mm, press any key to skip)\n')
+    date_ = input(
+        'The date you want to track (format: yyyy-MM-dd or "today" to set date to today)\n')
+
+    while(not validateDate(date_)):
+        date_ = input('The date you want to track (format: yyyy-MM-dd)\n')
+
+    stime = input(
+        'Start time? (format HH:mm, any invalid format will set this to default value\n')
+    etime = input(
+        'End time? (format HH:mm, any invalid format will set this to default value)\n')
 
     if not isTimeFormat(stime):
         stime = "00:00"
 
     if not isTimeFormat(etime):
-        etime = "23:59"
-    
+        etime = "23:30"
 
-    (reservables, cookie) = core.getReservables(date, phpsessid)
+    (reservables, cookie) = core.getReservables(date_, phpsessid)
 
-    reserveResult = core.reserve(60, cookie, '2020-01-14 21:00', '2020-01-14 22:00')
+    displayMerged(mergeReservables(reservables))
 
-    print(mergeReservables(reservables))
+    # reserveResult = core.reserve(
+    #     60, cookie, '2020-01-14 21:00', '2020-01-14 22:00')
 
 
 if __name__ == "__main__":

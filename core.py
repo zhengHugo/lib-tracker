@@ -39,6 +39,11 @@ def getReservables(date, phpsessid):
     f.write(r.text)
     f.close()
 
+    f = open("debug.log", 'w')
+    f.write('getReservable() Response Headers: \n')
+    f.write(str(r.headers))
+    f.close()
+
     # get the new cookie and modify for some reason
     _cookie = r.headers['Set-Cookie']
     _cookie = _cookie.split(';')[0]
