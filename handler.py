@@ -31,7 +31,7 @@ class Handler:
         )
         return result
 
-    def getAllReservables(self, date):
+    def getMergedReservables(self, date):
         (result, self.cookie) = query.getReservables(date, self.phpsessid)
         return mergeReservables(result)
 

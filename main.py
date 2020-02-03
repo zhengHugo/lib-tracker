@@ -35,7 +35,7 @@ def displayReserables(mergedSlots):
         entry = sdtObj.date().isoformat()
         entry += ' ' + sdtObj.time().isoformat()
         entry += ' for ' + \
-            str(slot.get('timeLength').total_seconds() / 60) + 'minutes'
+            str(slot.get('timeLength').total_seconds() / 60) + ' minutes'
         entry += '\nRoom: ' + roomNumber.get(slot.get('number')) + '\n'
         print(entry)
 
@@ -90,12 +90,13 @@ def main():
     if not isTimeFormat(etime):
         etime = "23:30"
 
-    reservables = h.getAllReservables(date_)
+    reservables = h.getMergedReservables(date_)
+    startAfter = time.fromisoformat(stime)
+    startBefore = time.fromisoformat(etime)
+    inRangeReservables = filter((lambda x: startAfter < x.get(
+        'startTime').time() < startBefore), reservables)
 
-    displayReserables(handler.mergeReservables(reservables))
-
-    # reserveResult = core.reserve(
-    #     60, cookie, '2020-01-14 21:00', '2020-01-14 22:00')
+    displayReserables(inRangeReservables)
 
 
 if __name__ == "__main__":
