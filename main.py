@@ -1,8 +1,7 @@
 import core
 import requests
 from datetime import datetime, date, time, timedelta
-from functools import reduce
-
+import handler
 
 roomNumber = {
     '61': 'Webster Library LB-251 (Luxembourg)',
@@ -30,37 +29,7 @@ def isTimeFormat(input):
         return False
 
 
-def consecutiveSlots(slot1, slot2):
-    time1 = slot1.get('startTime')
-    delta1 = slot1.get('timeLength')
-    time2 = slot2.get('startTime')
-    number1 = slot1.get('number')
-    number2 = slot2.get('number')
-    return time2 - time1 == delta1 and number1 == number2
-
-    # if (time2-time1) == delta1:
-    #     return (time1, delta1 + delta2)
-
-# return time slots in the format of (startTime, timedelta)
-
-
-# merge the half-hour reservable chunks, for display purpose only
-def mergeReservables(reservableSlots):
-    if (len(reservableSlots) > 1):
-        if (consecutiveSlots(reservableSlots[0], reservableSlots[1])):
-            newSlot = {'startTime': reservableSlots[0].get('startTime'), 'timeLength': reservableSlots[0].get(
-                'timeLength') + reservableSlots[1].get('timeLength'), 'number': reservableSlots[0].get('number')}
-            if (len(reservableSlots) > 2):
-                return mergeReservables([newSlot] + reservableSlots[2:])
-            else:
-                return [newSlot]
-        else:
-            return [reservableSlots[0]] + mergeReservables(reservableSlots[1:])
-    else:
-        return reservableSlots
-
-
-def displayMerged(mergedSlots):
+def displayReserables(mergedSlots):
     for slot in mergedSlots:
         sdtObj = slot.get('startTime')  # start datetime object
         entry = sdtObj.date().isoformat()
@@ -71,11 +40,20 @@ def displayMerged(mergedSlots):
         print(entry)
 
 
+def parseDate(date_):
+    if date_ == '0':
+        date_ = date.today().isoformat()
+    if date_ == '1':
+        date_ = (date.today() + timedelta(days=1)).isoformat()
+    return date_
+
+
 def validateDate(date_):
     # valid if later or equal to today
-    if date_ == 'today':
+    if date_ == '0':
         date_ = date.today().isoformat()
-
+    if date_ == '1':
+        date_ = (date.today() + timedelta(days=1)).isoformat()
     now = datetime.now().date()
     try:
         thisVal = date.fromisoformat(date_)
@@ -86,20 +64,25 @@ def validateDate(date_):
 
 # Preparation
 def main():
-    session = requests.session()
-    phpsessid = core.getSessionid(session)
-    core.login(session, phpsessid)
+    h = handler.Handler()
 
     date_ = input(
-        'The date you want to track (format: yyyy-MM-dd or "today" to set date to today)\n')
+        'The date you want to track '
+        '(format: yyyy-MM-dd. "0" to set date to today '
+        'and "1" to set date to tomorrow)\n'
+    )
+    date_ = parseDate(date_)
 
     while(not validateDate(date_)):
         date_ = input('The date you want to track (format: yyyy-MM-dd)\n')
+        date_ = parseDate(date_)
 
     stime = input(
-        'Start time? (format HH:mm, any invalid format will set this to default value\n')
+        'Start time? '
+        '(format HH:mm, any invalid format will set this to 00:00\n')
     etime = input(
-        'End time? (format HH:mm, any invalid format will set this to default value)\n')
+        'End time? '
+        '(format HH:mm, any invalid format will set this to 23:30)\n')
 
     if not isTimeFormat(stime):
         stime = "00:00"
@@ -107,9 +90,9 @@ def main():
     if not isTimeFormat(etime):
         etime = "23:30"
 
-    (reservables, cookie) = core.getReservables(date_, phpsessid)
+    reservables = h.getAllReservables(date_)
 
-    displayMerged(mergeReservables(reservables))
+    displayReserables(handler.mergeReservables(reservables))
 
     # reserveResult = core.reserve(
     #     60, cookie, '2020-01-14 21:00', '2020-01-14 22:00')
