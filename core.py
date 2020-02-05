@@ -61,7 +61,8 @@ def getReservables(date, phpsessid):
         hour = ref[8:10]
         minute = ref[10:12]
         num = ref[14:]
-        startTime = datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(minute))
+        startTime = datetime(year=int(year), month=int(
+            month), day=int(day), hour=int(hour), minute=int(minute))
         length = timedelta(minutes=30)
         reservables.append(
             {'startTime': startTime, 'timeLength': length, 'number': num})

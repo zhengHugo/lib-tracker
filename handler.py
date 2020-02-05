@@ -1,5 +1,6 @@
 import requests
 import query
+from bs4 import BeautifulSoup
 
 
 class Handler:
@@ -34,6 +35,50 @@ class Handler:
     def getMergedReservables(self, date):
         (result, self.cookie) = query.getReservables(date, self.phpsessid)
         return mergeReservables(result)
+
+    def reserve(self, roomNumber, stime, etime):
+        getPayload = {
+            'rid': roomNumber,
+            'sid': 1,
+            'rd': stime[:10],
+            'sd': stime,
+            'ed': etime
+        }
+        r = requests.get(
+            'https://booked.concordia.ca/Web/reservation.php',  headers={'Cookie': self.cookie}, params=getPayload)
+
+        f = open("submit.html", 'w')
+        f.write(r.text)
+        f.close()
+
+        soup = BeautifulSoup(r.text, 'html.parser')
+        scheduledId = soup.find('input', id='scheduleId').get('value')
+        resourceId = soup.find('input', class_='resourceId').get('value')
+        csrf_token = soup.find('input', id='csrf_token').get('value')
+
+        postPayload = {
+            'userId': 42358,
+            'beginDate': stime[:10],
+            'beginPeriod': stime[11:],
+            'endDate': etime[:10],
+            'endPeriod': etime[11:],
+            'scheduleId': scheduledId,
+            'resourceId': resourceId,
+            'reservationTitle': '',
+            'reservationDescription': '',
+            'reservationId': '',
+            'referenceNumber': '',
+            'reservationAction': 'create',
+            'DELETE_REASON': '',
+            'seriesUpdateScope': 'full',
+            'CSRF_TOKEN': csrf_token
+        }
+
+        postUrl = 'https://booked.concordia.ca/Web/ajax/reservation_save.php'
+        result = requests.post(postUrl, data=postPayload,
+                               headers={'Cookie': self.cookie})
+        return result
+
 
 # class handler ends
 
